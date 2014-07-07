@@ -22,107 +22,105 @@
  * SOFTWARE.
  */
 
-'use strict';
-
 angular.module('adf')
-  .directive('adfWidgetContent', function($log, $q, $sce, $http, $templateCache, $compile, $controller, $injector, dashboard) {
+    .directive('adfWidgetContent', function($log, $q, $sce, $http, $templateCache, $compile, $controller, $injector, dashboard) {
 
-    function getTemplate(widget){
-      var deferred = $q.defer();
+        function getTemplate(widget){
+            var deferred = $q.defer();
 
-      if ( widget.template ){
-        deferred.resolve(widget.template);
-      } else if (widget.templateUrl) {
-        var url = $sce.getTrustedResourceUrl(widget.templateUrl);
-        $http.get(url, {cache: $templateCache})
-          .success(function(response){
-            deferred.resolve(response);
-          })
-          .error(function(){
-            deferred.reject('could not load template');
-          });
-      }
+            if ( widget.template ){
+                deferred.resolve(widget.template);
+            } else if (widget.templateUrl) {
+                var url = $sce.getTrustedResourceUrl(widget.templateUrl);
+                $http.get(url, {cache: $templateCache})
+                    .success(function(response){
+                        deferred.resolve(response);
+                    })
+                    .error(function(){
+                        deferred.reject('could not load template');
+                    });
+            }
 
-      return deferred.promise;
-    };
-
-    function compileWidget($scope, $element) {
-      var model = $scope.model;
-      var content = $scope.content;
-
-      // display loading template
-      $element.html(dashboard.loadingTemplate);
-
-      // create new scope
-      var templateScope = $scope.$new();
-
-      // pass config object to scope
-      if (!model.config) {
-        model.config = {};
-      }
-
-      templateScope.config = model.config;
-
-      // local injections
-      var base = {
-        $scope: templateScope,
-        widget: model,
-        config: model.config
-      };
-
-      // get resolve promises from content object
-      var resolvers = {};
-      resolvers['$tpl'] = getTemplate(content);
-      if (content.resolve) {
-        angular.forEach(content.resolve, function(promise, key) {
-          if (angular.isString(promise)) {
-            resolvers[key] = $injector.get(promise);
-          } else {
-            resolvers[key] = $injector.invoke(promise, promise, base);
-          }
-        });
-      }
-
-      // resolve all resolvers
-      $q.all(resolvers).then(function(locals) {
-        angular.extend(locals, base);
-
-        // compile & render template
-        var template = locals['$tpl'];
-        $element.html(template);
-        if (content.controller) {
-          var templateCtrl = $controller(content.controller, locals);
-          $element.children().data('$ngControllerController', templateCtrl);
+            return deferred.promise;
         }
-        $compile($element.contents())(templateScope);
-      }, function(reason) {
-        // handle promise rejection
-        var msg = 'Could not resolve all promises';
-        if (reason) {
-          msg += ': ' + reason;
+
+        function compileWidget($scope, $element) {
+            var model = $scope.model;
+            var content = $scope.content;
+
+            // display loading template
+            $element.html(dashboard.loadingTemplate);
+
+            // create new scope
+            var templateScope = $scope.$new();
+
+            // pass config object to scope
+            if (!model.config) {
+                model.config = {};
+            }
+
+            templateScope.config = model.config;
+
+            // local injections
+            var base = {
+                $scope: templateScope,
+                widget: model,
+                config: model.config
+            };
+
+            // get resolve promises from content object
+            var resolvers = {};
+            resolvers['$tpl'] = getTemplate(content);
+            if (content.resolve) {
+                angular.forEach(content.resolve, function(promise, key) {
+                    if (angular.isString(promise)) {
+                        resolvers[key] = $injector.get(promise);
+                    } else {
+                        resolvers[key] = $injector.invoke(promise, promise, base);
+                    }
+                });
+            }
+
+            // resolve all resolvers
+            $q.all(resolvers).then(function(locals) {
+                angular.extend(locals, base);
+
+                // compile & render template
+                var template = locals['$tpl'];
+                $element.html(template);
+                if (content.controller) {
+                    var templateCtrl = $controller(content.controller, locals);
+                    $element.children().data('$ngControllerController', templateCtrl);
+                }
+                $compile($element.contents())(templateScope);
+            }, function(reason) {
+                // handle promise rejection
+                var msg = 'Could not resolve all promises';
+                if (reason) {
+                    msg += ': ' + reason;
+                }
+                $log.warn(msg);
+                $element.html(dashboard.messageTemplate.replace(/{}/g, msg));
+            });
         }
-        $log.warn(msg);
-        $element.html(dashboard.messageTemplate.replace(/{}/g, msg));
-      });
-    }
 
-    return {
-      replace: true,
-      restrict: 'EA',
-      transclude: false,
-      scope: {
-        model: '=',
-        content: '='
-      },
-      link: function($scope, $element, $attr) {
-        compileWidget($scope, $element);
-        $scope.$on('widgetConfigChanged', function(){
-          compileWidget($scope, $element);
-        });
-        $scope.$on('widgetReload', function(){
-          compileWidget($scope, $element);
-        });
-      }
-    };
+        return {
+            replace: true,
+            restrict: 'EA',
+            transclude: false,
+            scope: {
+                model: '=',
+                content: '='
+            },
+            link: function($scope, $element, $attr) {
+                compileWidget($scope, $element);
+                $scope.$on('widgetConfigChanged', function(){
+                    compileWidget($scope, $element);
+                });
+                $scope.$on('widgetReload', function(){
+                    compileWidget($scope, $element);
+                });
+            }
+        };
 
-  });
+    });

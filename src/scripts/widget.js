@@ -22,118 +22,121 @@
  * SOFTWARE.
  */
 
-'use strict';
-
 angular.module('adf')
-  .directive('adfWidget', function($log, $modal, dashboard) {
+    .directive('adfWidget', ['$log','$modal','dashboard',function($log, $modal, dashboard) {
 
-    function preLink($scope, $element, $attr){
-      var definition = $scope.definition;
-      if (definition) {
-        var w = dashboard.widgets[definition.type];
-        if (w) {
-          // pass title
-          if (!definition.title){
-            definition.title = w.title;
-          }
+        function preLink($scope, $element, $attr){
+            var definition = $scope.definition;
+            if (definition) {
+                var w = dashboard.widgets[definition.type];
+                if (w) {
+                    // pass title
+                    if (!definition.title){
+                        definition.title = w.title;
+                    }
 
-          // pass edit mode
-          $scope.editMode = $attr.editMode;
+                    // pass edit mode
+                    $scope.editMode = $attr.editMode;
 
-          // pass copy of widget to scope
-          $scope.widget = angular.copy(w);
+                    // pass copy of widget to scope
+                    $scope.widget = angular.copy(w);
 
-          // create config object
-          var config = definition.config;
-          if (config) {
-            if (angular.isString(config)) {
-              config = angular.fromJson(config);
+                    // create config object
+                    var config = definition.config;
+                    if (config) {
+                        if (angular.isString(config)) {
+                            config = angular.fromJson(config);
+                        }
+                    } else {
+                        config = {};
+                    }
+
+                    // pass config to scope
+                    $scope.config = config;
+
+                    // collapse
+                    $scope.isCollapsed = false;
+                } else {
+                    $log.warn('could not find widget ' + type);
+                }
+            } else {
+                $log.debug('definition not specified, widget was probably removed');
             }
-          } else {
-            config = {};
-          }
-
-          // pass config to scope
-          $scope.config = config;
-          
-          // collapse
-          $scope.isCollapsed = false;
-        } else {
-          $log.warn('could not find widget ' + type);
         }
-      } else {
-        $log.debug('definition not specified, widget was probably removed');
-      }
-    }
-    
-    function postLink($scope, $element, $attr) {
-      var definition = $scope.definition;
-      if (definition) {
-        // bind close function
-        $scope.close = function() {
-          var column = $scope.col;
-          if (column) {
-            var index = column.widgets.indexOf(definition);
-            if (index >= 0) {
-              column.widgets.splice(index, 1);
+
+        function postLink($scope, $element, $attr) {
+            var definition = $scope.definition;
+            if (definition) {
+                // bind close function
+                $scope.close = function() {
+                    var column = $scope.col;
+                    if (column) {
+                        var index = column.widgets.indexOf(definition);
+                        if (index >= 0) {
+                            column.widgets.splice(index, 1);
+                        }
+                    }
+                    $element.remove();
+                };
+
+                // bind reload function
+                $scope.reload = function(){
+                    $scope.$broadcast('widgetReload');
+                };
+
+                // bind edit function
+                $scope.edit = function() {
+                    var editScope = $scope.$new();
+
+                    var opts = {
+                        scope: editScope,
+                        templateUrl: 'frameworks/dashboard/templates/widget-edit.tpl.html'
+                    };
+
+                    var instance = $modal.open(opts);
+                    editScope.closeDialog = function() {
+                        instance.close();
+                        editScope.$destroy();
+
+                        var widget = $scope.widget;
+                        if (widget.edit && widget.edit.reload){
+                            // reload content after edit dialog is closed
+                            $scope.$broadcast('widgetConfigChanged');
+                        }
+                    };
+                };
+                if ($scope.definition.added)
+                {
+                    delete $scope.definition.added;
+                    setTimeout($scope.edit, 1);
+                }
+            } else {
+                $log.debug('widget not found');
             }
-          }
-          $element.remove();
-        };
-        
-        // bind reload function
-        $scope.reload = function(){
-          $scope.$broadcast('widgetReload');
-        };
+        }
 
-        // bind edit function
-        $scope.edit = function() {
-          var editScope = $scope.$new();
-          
-          var opts = {
-            scope: editScope,
-            templateUrl: '../src/templates/widget-edit.html'
-          };
-
-          var instance = $modal.open(opts);
-          editScope.closeDialog = function() {
-            instance.close();
-            editScope.$destroy();
-            
-            var widget = $scope.widget;
-            if (widget.edit && widget.edit.reload){
-              // reload content after edit dialog is closed
-              $scope.$broadcast('widgetConfigChanged');
-            }
-          };
-        };
-      } else {
-        $log.debug('widget not found');
-      }
-    }
-
-    return {
-      replace: true,
-      restrict: 'EA',
-      transclude: false,
-      templateUrl: '../src/templates/widget.html',
-      scope: {
-        definition: '=',
-        col: '=column',
-        editMode: '@',
-        collapsible: '='
-      },
-      compile: function compile($element, $attr, transclude) {
-        
-        /**
-         * use pre link, because link of widget-content
-         * is executed before post link widget
-         */ 
         return {
-          pre: preLink,
-          post: postLink
-        };
-      }
-    };
+            replace: true,
+            restrict: 'EA',
+            transclude: false,
+            templateUrl: 'frameworks/dashboard/templates/widget.tpl.html',
+            scope: {
+                definition: '=',
+                col: '=column',
+                editMode: '@',
+                collapsible: '='
+            },
+            compile: function compile($element, $attr, transclude) {
 
-  });
+                /**
+                 * use pre link, because link of widget-content
+                 * is executed before post link widget
+                 */
+                return {
+                    pre: preLink,
+                    post: postLink
+                };
+            }
+        };
+
+    }]);
