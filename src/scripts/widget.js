@@ -90,7 +90,7 @@ angular.module('adf')
 
                     var opts = {
                         scope: editScope,
-                        templateUrl: 'frameworks/dashboard/templates/widget-edit.tpl.html'
+                        templateUrl: '../src/templates/widget-edit.html'
                     };
 
                     var instance = $modal.open(opts);
@@ -119,7 +119,7 @@ angular.module('adf')
             replace: true,
             restrict: 'EA',
             transclude: false,
-            templateUrl: 'frameworks/dashboard/templates/widget.tpl.html',
+            templateUrl: '../src/templates/widget.html',
             scope: {
                 definition: '=',
                 col: '=column',
